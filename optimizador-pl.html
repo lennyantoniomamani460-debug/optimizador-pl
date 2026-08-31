@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimizador PL — Programación Lineal Interactiva</title>
+<style>
+  :root{
+    --paper:#F1F0EA;
+    --ink:#16211D;
+    --panel:#FFFFFF;
+    --line:#D8D5C9;
+    --accent:#2F5D50;
+    --accent-2:#B5622A;
+    --accent-soft:#E7EFEA;
+    --danger:#A23B2E;
+    --mono: ui-monospace, SFMono-Regular, "IBM Plex Mono", Menlo, Consolas, monospace;
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      linear-gradient(var(--line) 1px, transparent 1px) 0 0/100% 28px,
+      var(--paper);
+    background-blend-mode:normal;
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100vh;
+  }
+  body::before{content:none;}
+  .grid-bg{
+    background-image: linear-gradient(rgba(22,33,29,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(22,33,29,0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  header.top{
+    padding:28px 24px 18px;
+    border-bottom:2px solid var(--ink);
+  }
+  header.top h1{
+    font-family:var(--serif);
+    font-size:clamp(26px,4vw,38px);
+    margin:0 0 6px;
+    letter-spacing:-0.01em;
+  }
+  header.top p{
+    margin:0;
+    max-width:640px;
+    color:#3c463f;
+    font-size:14.5px;
+    line-height:1.5;
+  }
+  nav.tabs{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0;
+    border-bottom:1px solid var(--line);
+    background:var(--panel);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  nav.tabs button{
+    font-family:var(--sans);
+    font-size:13.5px;
+    padding:13px 16px;
+    border:none;
+    background:transparent;
+    cursor:pointer;
+    color:#5b665e;
+    border-bottom:3px solid transparent;
+    border-right:1px solid var(--line);
+    white-space:nowrap;
+  }
+  nav.tabs button:hover{ color:var(--ink); background:var(--accent-soft); }
+  nav.tabs button.active{
+    color:var(--ink);
+    font-weight:600;
+    border-bottom:3px solid var(--accent);
+    background:var(--accent-soft);
+  }
+  main{
+    max-width:1040px;
+    margin:0 auto;
+    padding:24px 20px 80px;
+  }
+  .panel{ display:none; }
+  .panel.active{ display:block; animation:fade .25s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:20px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-family:var(--serif);
+    font-size:20px;
+    margin:0 0 4px;
+  }
+  .card .sub{
+    color:#5b665e;
+    font-size:13px;
+    margin:0 0 16px;
+    line-height:1.5;
+  }
+  .toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  select, input[type=number], input[type=text]{
+    font-family:var(--mono);
+    font-size:13.5px;
+    padding:6px 8px;
+    border:1px solid #9aa79e;
+    border-radius:2px;
+    background:#fff;
+    color:var(--ink);
+  }
+  input[type=number]{ width:76px; text-align:right; }
+  label.field-label{
+    font-family:var(--sans);
+    font-size:12.5px;
+    color:#5b665e;
+    display:block;
+    margin-bottom:3px;
+  }
+  button.btn{
+    font-family:var(--sans);
+    font-size:13px;
+    padding:7px 13px;
+    border:1px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    border-radius:2px;
+    cursor:pointer;
+  }
+  button.btn:hover{ background:var(--ink); color:#fff; }
+  button.btn.primary{
+    background:var(--accent);
+    color:#fff;
+    border-color:var(--accent);
+    font-weight:600;
+  }
+  button.btn.primary:hover{ background:#234840; }
+  button.btn.ghost{ border-color:var(--line); color:#5b665e; }
+  button.btn.small{ padding:3px 8px; font-size:12px; }
+  button.icon-remove{
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--danger);
+    border-radius:2px;
+    width:26px; height:26px;
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+  }
+  .row{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .row:last-child{ border-bottom:none; }
+  .row .rowlabel{
+    font-family:var(--mono);
+    font-size:12.5px;
+    color:#5b665e;
+    width:24px;
+    flex-shrink:0;
+  }
+  .coefs{ display:flex; gap:8px; flex-wrap:wrap; }
+  .coef-cell{ display:flex; flex-direction:column; }
+  .coef-cell span{ font-family:var(--mono); font-size:11px; color:#8a9189; margin-bottom:2px; }
+  .rel-select{ width:56px; }
+  .goal-extra{ display:flex; gap:8px; align-items:flex-end; }
+  .int-check{ display:flex; flex-direction:column; align-items:center; font-size:11px; color:#5b665e; font-family:var(--mono); }
+  .int-check input{ margin-top:3px; }
+
+  .result-box{ margin-top:16px; }
+  .status-line{
+    font-family:var(--mono);
+    font-size:14px;
+    padding:10px 14px;
+    border-radius:2px;
+    margin-bottom:12px;
+  }
+  .status-optimal{ background:var(--accent-soft); border:1px solid var(--accent); color:#1c3d34; }
+  .status-bad{ background:#F6E7E3; border:1px solid var(--danger); color:var(--danger); }
+  table.result-table{
+    border-collapse:collapse;
+    width:100%;
+    font-family:var(--mono);
+    font-size:13.5px;
+  }
+  table.result-table th, table.result-table td{
+    border:1px solid var(--line);
+    padding:6px 10px;
+    text-align:right;
+  }
+  table.result-table th{ background:var(--accent-soft); text-align:center; font-family:var(--sans); font-size:12px; }
+  table.result-table td:first-child, table.result-table th:first-child{ text-align:left; }
+
+  .hint{ font-size:12px; color:#8a9189; margin-top:6px; }
+  .section-title{ font-family:var(--sans); font-size:12px; text-transform:none; color:#5b665e; margin:18px 0 8px; font-weight:600; }
+  .node-grid{ display:grid; grid-template-columns:1.4fr .9fr .9fr auto; gap:8px; align-items:end; padding:6px 0; border-bottom:1px dashed var(--line); }
+  .arc-grid{ display:grid; grid-template-columns:1.1fr 1.1fr .8fr .8fr auto; gap:8px; align-items:end; padding:6px 0; border-bottom:1px dashed var(--line); }
+  select.node-type, select.node-select{ width:100%; }
+  input.node-name{ width:100%; }
+  footer.foot{ text-align:center; padding:26px 12px 40px; color:#8a9189; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Optimizador PL</h1>
+  <p>Herramienta interactiva de programación lineal: modelos generales y enteros, transporte, transbordo y programación por objetivos — más una calculadora de indicadores financieros (VAN, TIR, IR).</p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab-btn active" data-tab="lp">Programación lineal y entera</button>
+  <button class="tab-btn" data-tab="transporte">Transporte</button>
+  <button class="tab-btn" data-tab="transbordo">Transbordo</button>
+  <button class="tab-btn" data-tab="goal">Programación por objetivos</button>
+  <button class="tab-btn" data-tab="finanzas">VAN · TIR · IR</button>
+</nav>
+
+<main>
+
+  <!-- ===================== TAB 1: LP / IP ===================== -->
+  <section class="panel active" id="panel-lp">
+    <div class="card">
+      <h2>Modelo general</h2>
+      <p class="sub">Define variables, la función objetivo y las restricciones. Marca "entera" en las variables que deban tomar valores enteros para resolver como programación entera (branch &amp; bound).</p>
+
+      <div class="toolbar">
+        <label class="field-label" style="margin:0;">Sentido:</label>
+        <select id="lp-sense">
+          <option value="max">Maximizar</option>
+          <option value="min">Minimizar</option>
+        </select>
+        <button class="btn" onclick="lpAddVar()">+ variable</button>
+        <button class="btn ghost" onclick="lpRemoveVar()">− variable</button>
+      </div>
+
+      <div class="section-title">Función objetivo</div>
+      <div class="row">
+        <div class="rowlabel">Z =</div>
+        <div class="coefs" id="lp-obj-coefs"></div>
+      </div>
+
+      <div class="section-title">Variables enteras</div>
+      <div class="row">
+        <div class="rowlabel">Z =</div>
+        <div class="coefs" id="lp-int-coefs"></div>
+      </div>
+
+      <div class="section-title">Restricciones</div>
+      <div id="lp-constraints"></div>
+      <div style="margin-top:10px;">
+        <button class="btn" onclick="lpAddConstraint()">+ restricción</button>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="lpSolve()">Resolver</button>
+      </div>
+
+      <div class="result-box" id="lp-result"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 2: TRANSPORTE ===================== -->
+  <section class="panel" id="panel-transporte">
+    <div class="card">
+      <h2>Problema de transporte</h2>
+      <p class="sub">Ingresa la oferta de cada origen, la demanda de cada destino y los costos unitarios de envío. Si oferta total ≠ demanda total, se balancea automáticamente con un origen o destino ficticio de costo cero.</p>
+
+      <div class="toolbar">
+        <button class="btn" onclick="tpAddOrigin()">+ origen</button>
+        <button class="btn ghost" onclick="tpRemoveOrigin()">− origen</button>
+        <button class="btn" onclick="tpAddDest()">+ destino</button>
+        <button class="btn ghost" onclick="tpRemoveDest()">− destino</button>
+      </div>
+
+      <div id="tp-table-wrap"></div>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="tpSolve()">Resolver</button>
+      </div>
+      <div class="result-box" id="tp-result"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 3: TRANSBORDO ===================== -->
+  <section class="panel" id="panel-transbordo">
+    <div class="card">
+      <h2>Problema de transbordo</h2>
+      <p class="sub">Define los nodos de la red (oferta, demanda o transbordo) y los arcos posibles entre ellos con su costo unitario. Deja la capacidad vacía si el arco no tiene límite.</p>
+
+      <div class="section-title">Nodos</div>
+      <div class="node-grid" style="font-size:11px; color:#8a9189;">
+        <div>Nombre</div><div>Tipo</div><div>Cantidad</div><div></div>
+      </div>
+      <div id="tb-nodes"></div>
+      <button class="btn small" onclick="tbAddNode()" style="margin-top:8px;">+ nodo</button>
+
+      <div class="section-title">Arcos (rutas posibles)</div>
+      <div class="arc-grid" style="font-size:11px; color:#8a9189;">
+        <div>Origen</div><div>Destino</div><div>Costo</div><div>Capacidad (opc.)</div><div></div>
+      </div>
+      <div id="tb-arcs"></div>
+      <button class="btn small" onclick="tbAddArc()" style="margin-top:8px;">+ arco</button>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="tbSolve()">Resolver</button>
+      </div>
+      <div class="result-box" id="tb-result"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 4: GOAL PROGRAMMING ===================== -->
+  <section class="panel" id="panel-goal">
+    <div class="card">
+      <h2>Programación por objetivos</h2>
+      <p class="sub">Define las variables de decisión, metas (objetivos deseados con su peso de importancia) y, opcionalmente, restricciones rígidas del sistema. El modelo minimiza la suma ponderada de las desviaciones respecto a cada meta.</p>
+
+      <div class="toolbar">
+        <button class="btn" onclick="gpAddVar()">+ variable</button>
+        <button class="btn ghost" onclick="gpRemoveVar()">− variable</button>
+      </div>
+
+      <div class="section-title">Restricciones rígidas del sistema (opcional)</div>
+      <div id="gp-hard"></div>
+      <button class="btn small" onclick="gpAddHard()" style="margin-top:6px;">+ restricción rígida</button>
+
+      <div class="section-title">Metas</div>
+      <div id="gp-goals"></div>
+      <button class="btn small" onclick="gpAddGoal()" style="margin-top:6px;">+ meta</button>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="gpSolve()">Resolver</button>
+      </div>
+      <div class="result-box" id="gp-result"></div>
+    </div>
+  </section>
+
+  <!-- ===================== TAB 5: FINANZAS ===================== -->
+  <section class="panel" id="panel-finanzas">
+    <div class="card">
+      <h2>VAN · TIR · IR <span style="font-weight:400; color:#8a9189; font-size:13px;">(plus)</span></h2>
+      <p class="sub">Calcula el Valor Actual Neto, la Tasa Interna de Retorno y el Índice de Rentabilidad a partir de una inversión inicial y un flujo de caja.</p>
+
+      <div class="row">
+        <div class="coef-cell">
+          <span>tasa de descuento (%)</span>
+          <input type="number" id="fin-rate" value="10" step="0.1">
+        </div>
+        <div class="coef-cell">
+          <span>inversión inicial</span>
+          <input type="number" id="fin-i0" value="10000" step="100">
+        </div>
+      </div>
+
+      <div class="section-title">Flujo de caja por periodo</div>
+      <div id="fin-flows"></div>
+      <div style="margin-top:8px;">
+        <button class="btn small" onclick="finAddFlow()">+ periodo</button>
+        <button class="btn ghost small" onclick="finRemoveFlow()">− periodo</button>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="finSolve()">Calcular</button>
+      </div>
+      <div class="result-box" id="fin-result"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">Motor de solución: método simplex (Big M) con branch &amp; bound para variables enteras. Guarda una copia de esta versión antes de modificarla.</footer>
+
+<script>
+/* ============================================================
+   MOTOR: SIMPLEX (BIG M) + BRANCH AND BOUND
+   ============================================================ */
+function solveLP(objCoeffs, constraints, sense){
+  const n = objCoeffs.length;
+  const isMin = sense === 'min';
+  const obj = isMin ? objCoeffs.map(c=>-c) : objCoeffs.slice();
+
+  const cons = constraints.map(c=>{
+    let coeffs = c.coeffs.slice();
+    let rel = c.rel;
+    let rhs = c.rhs;
+    if (rhs < 0){
+      coeffs = coeffs.map(v=>-v);
+      rhs = -rhs;
+      if (rel === '<=') rel = '>=';
+      else if (rel === '>=') rel = '<=';
+    }
+    return {coeffs, rel, rhs};
+  });
+
+  const m = cons.length;
+  let slackCount=0, artCount=0;
+  cons.forEach(c=>{
+    if (c.rel==='<=') slackCount++;
+    else if (c.rel==='>=') { slackCount++; artCount++; }
+    else if (c.rel==='=') artCount++;
+  });
+
+  const totalVars = n + slackCount + artCount;
+  const maxAbs = Math.max(1, ...objCoeffs.map(Math.abs), ...cons.flatMap(c=>c.coeffs.map(Math.abs)), ...cons.map(c=>Math.abs(c.rhs)));
+  const M = maxAbs*1e5 + 1e5;
+
+  let tableau = [];
+  let basis = new Array(m);
+  let currentSlack=0, currentArt=0;
+  const artCols = [];
+
+  cons.forEach((c,i)=>{
+    const row = new Array(totalVars+1).fill(0);
+    for (let j=0;j<n;j++) row[j]=c.coeffs[j];
+    if (c.rel==='<='){
+      row[n+currentSlack]=1;
+      basis[i]=n+currentSlack;
+      currentSlack++;
+    } else if (c.rel==='>='){
+      row[n+currentSlack]=-1;
+      currentSlack++;
+      const artCol = n+slackCount+currentArt;
+      row[artCol]=1;
+      basis[i]=artCol;
+      artCols.push(artCol);
+      currentArt++;
+    } else {
+      const artCol = n+slackCount+currentArt;
+      row[artCol]=1;
+      basis[i]=artCol;
+      artCols.push(artCol);
+      currentArt++;
+    }
+    row[totalVars]=c.rhs;
+    tableau.push(row);
+  });
+
+  const objRow = new Array(totalVars+1).fill(0);
+  for (let j=0;j<n;j++) objRow[j]=obj[j];
+  for (const col of artCols) objRow[col]=-M;
+
+  let zRow = objRow.slice().map(v=>-v);
+  for (let i=0;i<m;i++){
+    const bv = basis[i];
+    const cB = objRow[bv];
+    if (cB !== 0){
+      for (let j=0;j<=totalVars;j++) zRow[j] += cB*tableau[i][j];
+    }
+  }
+
+  const maxIter = 800;
+  let iter=0;
+  while (iter++ < maxIter){
+    let pivotCol=-1, best=-1e-9;
+    for (let j=0;j<totalVars;j++){
+      if (zRow[j] < best){ best=zRow[j]; pivotCol=j; }
+    }
+    if (pivotCol===-1) break;
+
+    let pivotRow=-1, minRatio=Infinity;
+    for (let i=0;i<m;i++){
+      const a = tableau[i][pivotCol];
+      if (a > 1e-9){
+        const ratio = tableau[i][totalVars]/a;
+        if (ratio < minRatio - 1e-9){ minRatio=ratio; pivotRow=i; }
+        else if (Math.abs(ratio-minRatio) < 1e-9){
+          if (pivotRow===-1 || basis[i] < basis[pivotRow]) pivotRow=i;
+        }
+      }
+    }
+    if (pivotRow===-1) return {status:'unbounded'};
+
+    const pv = tableau[pivotRow][pivotCol];
+    for (let j=0;j<=totalVars;j++) tableau[pivotRow][j] /= pv;
+    for (let i=0;i<m;i++){
+      if (i===pivotRow) continue;
+      const f = tableau[i][pivotCol];
+      if (f !== 0) for (let j=0;j<=totalVars;j++) tableau[i][j] -= f*tableau[pivotRow][j];
+    }
+    const zf = zRow[pivotCol];
+    if (zf !== 0) for (let j=0;j<=totalVars;j++) zRow[j] -= zf*tableau[pivotRow][j];
+    basis[pivotRow]=pivotCol;
+  }
+
+  for (let i=0;i<m;i++){
+    if (artCols.includes(basis[i]) && tableau[i][totalVars] > 1e-6) return {status:'infeasible'};
+  }
+
+  const x = new Array(n).fill(0);
+  for (let i=0;i<m;i++) if (basis[i] < n) x[basis[i]] = tableau[i][totalVars];
+  let z=0;
+  for (let j=0;j<n;j++) z += objCoeffs[j]*x[j];
+  return {status:'optimal', x, z};
+}
+
+function isIntVal(v, tol=1e-6){ return Math.abs(v-Math.round(v)) < tol; }
+
+function solveIP(objCoeffs, constraints, sense, intVarIdx){
+  const isMax = sense==='max';
+  const intSet = intVarIdx;
+  let best=null;
+  let nodes=0;
+  const maxNodes=4000;
+
+  function branch(extraCons){
+    nodes++;
+    if (nodes>maxNodes) return;
+    const res = solveLP(objCoeffs, constraints.concat(extraCons), sense);
+    if (res.status!=='optimal') return;
+    if (best){
+      if (isMax && res.z <= best.z+1e-7) return;
+      if (!isMax && res.z >= best.z-1e-7) return;
+    }
+    let fracIdx=-1;
+    for (const idx of intSet){ if (!isIntVal(res.x[idx])){ fracIdx=idx; break; } }
+    if (fracIdx===-1){ best={x:res.x.slice(), z:res.z}; return; }
+    const val = res.x[fracIdx];
+    const n = objCoeffs.length;
+    const zeroRow = new Array(n).fill(0);
+    const floorC = {coeffs: zeroRow.map((_,j)=> j===fracIdx?1:0), rel:'<=', rhs:Math.floor(val)};
+    const ceilC = {coeffs: zeroRow.map((_,j)=> j===fracIdx?1:0), rel:'>=', rhs:Math.ceil(val)};
+    branch(extraCons.concat([floorC]));
+    branch(extraCons.concat([ceilC]));
+  }
+  branch([]);
+  if (!best) return {status:'infeasible'};
+  return {status:'optimal', x:best.x, z:best.z};
+}
+
+function fmt(v){
+  if (v===undefined || v===null || isNaN(v)) return '—';
+  const r = Math.round(v*1000)/1000;
+  return r.toString();
+}
+
+/* ============================================================
+   TAB NAVIGATION
+   ============================================================ */
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+});
+
+/* ============================================================
+   TAB 1: LP / IP
+   ============================================================ */
+let lpN = 2;
+
+function coefCell(varIndex, value){
+  const wrap = document.createElement('div');
+  wrap.className = 'coef-cell';
+  const span = document.createElement('span');
+  span.textContent = 'x' + (varIndex+1);
+  const inp = document.createElement('input');
+  inp.type='number'; inp.step='any'; inp.className='coef'; inp.value = value ?? 0;
+  wrap.appendChild(span); wrap.appendChild(inp);
+  return wrap;
+}
+
+function intCell(varIndex){
+  const wrap = document.createElement('div');
+  wrap.className = 'int-check';
+  wrap.innerHTML = 'x'+(varIndex+1);
+  const inp = document.createElement('input');
+  inp.type='checkbox'; inp.className='intflag';
+  wrap.appendChild(inp);
+  return wrap;
+}
+
+function lpInit(){
+  const objWrap = document.getElementById('lp-obj-coefs');
+  const intWrap = document.getElementById('lp-int-coefs');
+  objWrap.innerHTML=''; intWrap.innerHTML='';
+  for (let i=0;i<lpN;i++){
+    objWrap.appendChild(coefCell(i, i===0?3:5));
+    intWrap.appendChild(intCell(i));
+  }
+  document.getElementById('lp-constraints').innerHTML='';
+  lpAddConstraint([1,0],'<=',4);
+  lpAddConstraint([0,2],'<=',12);
+  lpAddConstraint([3,2],'<=',18);
+}
+
+function lpAddVar(){
+  if (lpN>=12) return;
+  lpN++;
+  document.getElementById('lp-obj-coefs').appendChild(coefCell(lpN-1, 0));
+  document.getElementById('lp-int-coefs').appendChild(intCell(lpN-1));
+  document.querySelectorAll('#lp-constraints .lp-row .coefs').forEach(c=>{
+    c.appendChild(coefCell(lpN-1, 0));
+  });
+}
+function lpRemoveVar(){
+  if (lpN<=1) return;
+  lpN--;
+  const objWrap = document.getElementById('lp-obj-coefs');
+  objWrap.removeChild(objWrap.lastElementChild);
+  const intWrap = document.getElementById('lp-int-coefs');
+  intWrap.removeChild(intWrap.lastElementChild);
+  document.querySelectorAll('#lp-constraints .lp-row .coefs').forEach(c=>{
+    c.removeChild(c.lastElementChild);
+  });
+}
+
+let lpConCount = 0;
+function lpAddConstraint(prefill, rel, rhs){
+  lpConCount++;
+  const idx = lpConCount;
+  const row = document.createElement('div');
+  row.className = 'row lp-row';
+  row.dataset.rowid = idx;
+
+  const label = document.createElement('div');
+  label.className='rowlabel';
+  label.textContent = 'R'+idx;
+
+  const coefs = document.createElement('div');
+  coefs.className='coefs';
+  for (let i=0;i<lpN;i++) coefs.appendChild(coefCell(i, prefill? prefill[i] : 0));
+
+  const relSel = document.createElement('select');
+  relSel.className='rel-select';
+  relSel.innerHTML = '<option value="<=">&le;</option><option value=">=">&ge;</option><option value="=">=</option>';
+  if (rel) relSel.value = rel;
+
+  const rhsInp = document.createElement('input');
+  rhsInp.type='number'; rhsInp.step='any'; rhsInp.className='rhs'; rhsInp.value = rhs ?? 0;
+
+  const rmBtn = document.createElement('button');
+  rmBtn.className='icon-remove'; rmBtn.textContent='×';
+  rmBtn.onclick = ()=> row.remove();
+
+  row.appendChild(label);
+  row.appendChild(coefs);
+  row.appendChild(relSel);
+  row.appendChild(rhsInp);
+  row.appendChild(rmBtn);
+  document.getElementById('lp-constraints').appendChild(row);
+}
+
+function lpSolve(){
+  const sense = document.getElementById('lp-sense').value;
+  const objCoeffs = Array.from(document.querySelectorAll('#lp-obj-coefs .coef')).map(i=>parseFloat(i.value)||0);
+  const intFlags = Array.from(document.querySelectorAll('#lp-int-coefs .intflag')).map(i=>i.checked);
+  const rows = document.querySelectorAll('#lp-constraints .lp-row');
+  const constraints = Array.from(rows).map(row=>{
+    const coeffs = Array.from(row.querySelectorAll('.coefs .coef')).map(i=>parseFloat(i.value)||0);
+    const rel = row.querySelector('.rel-select').value;
+    const rhs = parseFloat(row.querySelector('.rhs').value)||0;
+    return {coeffs, rel, rhs};
+  });
+
+  const intIdx = intFlags.map((f,i)=>f?i:-1).filter(i=>i>=0);
+  let res;
+  if (intIdx.length>0){
+    res = solveIP(objCoeffs, constraints, sense, intIdx);
+  } else {
+    res = solveLP(objCoeffs, constraints, sense);
+  }
+  renderLpResult(res, objCoeffs.length);
+}
+
+function renderLpResult(res, n){
+  const box = document.getElementById('lp-result');
+  if (res.status!=='optimal'){
+    box.innerHTML = `<div class="status-line status-bad">${res.status==='infeasible' ? 'El modelo no tiene solución factible.' : 'El modelo es no acotado (Z crece/decrece sin límite).'}</div>`;
+    return;
+  }
+  let rows = '';
+  for (let i=0;i<n;i++) rows += `<tr><td>x${i+1}</td><td>${fmt(res.x[i])}</td></tr>`;
+  box.innerHTML = `
+    <div class="status-line status-optimal">Solución óptima encontrada — Z = ${fmt(res.z)}</div>
+    <table class="result-table">
+      <thead><tr><th>Variable</th><th>Valor</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+/* ============================================================
+   TAB 2: TRANSPORTE
+   ============================================================ */
+let tpOrigins = 2, tpDests = 2;
+let tpSupply = [20,30], tpDemand = [25,25], tpCost = [[4,6],[3,5]];
+
+function tpRenderTable(){
+  let html = '<table class="result-table" style="width:auto;">';
+  html += '<thead><tr><th></th>';
+  for (let j=0;j<tpDests;j++) html += `<th>Destino ${j+1}</th>`;
+  html += '<th>Oferta</th></tr></thead><tbody>';
+  for (let i=0;i<tpOrigins;i++){
+    html += `<tr><td>Origen ${i+1}</td>`;
+    for (let j=0;j<tpDests;j++){
+      html += `<td><input type="number" step="any" class="tp-cost" data-i="${i}" data-j="${j}" value="${tpCost[i][j]??0}" style="width:64px;"></td>`;
+    }
+    html += `<td><input type="number" step="any" class="tp-supply" data-i="${i}" value="${tpSupply[i]??0}" style="width:64px;"></td></tr>`;
+  }
+  html += '<tr><td>Demanda</td>';
+  for (let j=0;j<tpDests;j++){
+    html += `<td><input type="number" step="any" class="tp-demand" data-j="${j}" value="${tpDemand[j]??0}" style="width:64px;"></td>`;
+  }
+  html += '<td></td></tr></tbody></table>';
+  document.getElementById('tp-table-wrap').innerHTML = html;
+}
+
+function tpSyncFromDom(){
+  const newCost = [];
+  for (let i=0;i<tpOrigins;i++){ newCost.push([]); for (let j=0;j<tpDests;j++) newCost[i].push(tpCost[i]?.[j] ?? 0); }
+  const inputs = document.querySelectorAll('.tp-cost');
+  inputs.forEach(inp=>{
+    const i=+inp.dataset.i, j=+inp.dataset.j;
+    if (newCost[i]) newCost[i][j] = parseFloat(inp.value)||0;
+  });
+  const newSupply = [];
+  for (let i=0;i<tpOrigins;i++) newSupply.push(tpSupply[i] ?? 0);
+  document.querySelectorAll('.tp-supply').forEach(inp=>{ newSupply[+inp.dataset.i] = parseFloat(inp.value)||0; });
+  const newDemand = [];
+  for (let j=0;j<tpDests;j++) newDemand.push(tpDemand[j] ?? 0);
+  document.querySelectorAll('.tp-demand').forEach(inp=>{ newDemand[+inp.dataset.j] = parseFloat(inp.value)||0; });
+  tpCost = newCost; tpSupply = newSupply; tpDemand = newDemand;
+}
+
+function tpAddOrigin(){ tpSyncFromDom(); tpOrigins++; tpSupply.push(0); tpCost.push(new Array(tpDests).fill(0)); tpRenderTable(); }
+function tpRemoveOrigin(){ if (tpOrigins<=1) return; tpSyncFromDom(); tpOrigins--; tpSupply.pop(); tpCost.pop(); tpRenderTable(); }
+function tpAddDest(){ tpSyncFromDom(); tpDests++; tpDemand.push(0); tpCost.forEach(r=>r.push(0)); tpRenderTable(); }
+function tpRemoveDest(){ if (tpDests<=1) return; tpSyncFromDom(); tpDests--; tpDemand.pop(); tpCost.forEach(r=>r.pop()); tpRenderTable(); }
+
+function tpSolve(){
+  tpSyncFromDom();
+  let origins = tpOrigins, dests = tpDests;
+  let supply = tpSupply.slice(), demand = tpDemand.slice();
+  let cost = tpCost.map(r=>r.slice());
+  const totalSupply = supply.reduce((a,b)=>a+b,0);
+  const totalDemand = demand.reduce((a,b)=>a+b,0);
+  let note = '';
+  if (Math.abs(totalSupply-totalDemand) > 1e-6){
+    if (totalSupply < totalDemand){
+      supply.push(totalDemand-totalSupply);
+      cost.push(new Array(dests).fill(0));
+      origins++;
+      note = 'Oferta total menor que demanda: se agregó un origen ficticio de costo 0.';
+    } else {
+      demand.push(totalSupply-totalDemand);
+      cost.forEach(r=>r.push(0));
+      dests++;
+      note = 'Demanda total menor que oferta: se agregó un destino ficticio de costo 0.';
+    }
+  }
+
+  const objCoeffs = [];
+  for (let i=0;i<origins;i++) for (let j=0;j<dests;j++) objCoeffs.push(cost[i][j]);
+
+  const constraints = [];
+  for (let i=0;i<origins;i++){
+    const row = new Array(origins*dests).fill(0);
+    for (let j=0;j<dests;j++) row[i*dests+j]=1;
+    constraints.push({coeffs:row, rel:'=', rhs:supply[i]});
+  }
+  for (let j=0;j<dests;j++){
+    const row = new Array(origins*dests).fill(0);
+    for (let i=0;i<origins;i++) row[i*dests+j]=1;
+    constraints.push({coeffs:row, rel:'=', rhs:demand[j]});
+  }
+
+  const res = solveLP(objCoeffs, constraints, 'min');
+  const box = document.getElementById('tp-result');
+  if (res.status!=='optimal'){
+    box.innerHTML = `<div class="status-line status-bad">No se encontró una solución factible.</div>`;
+    return;
+  }
+  let html = note ? `<div class="hint">${note}</div>` : '';
+  html += `<div class="status-line status-optimal">Costo total mínimo = ${fmt(res.z)}</div>`;
+  html += '<table class="result-table"><thead><tr><th></th>';
+  for (let j=0;j<dests;j++) html += `<th>Destino ${j+1}${j>=tpDests?' (ficticio)':''}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let i=0;i<origins;i++){
+    html += `<tr><td>Origen ${i+1}${i>=tpOrigins?' (ficticio)':''}</td>`;
+    for (let j=0;j<dests;j++) html += `<td>${fmt(res.x[i*dests+j])}</td>`;
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+/* ============================================================
+   TAB 3: TRANSBORDO
+   ============================================================ */
+let tbNodeCount = 0;
+let tbArcCount = 0;
+
+function tbAddNode(name, type, amount){
+  tbNodeCount++;
+  const id = tbNodeCount;
+  const row = document.createElement('div');
+  row.className = 'node-grid tb-node';
+  row.dataset.id = id;
+  row.innerHTML = `
+    <input type="text" class="node-name" value="${name ?? ('N'+id)}">
+    <select class="node-type">
+      <option value="oferta">Oferta</option>
+      <option value="demanda">Demanda</option>
+      <option value="transbordo">Transbordo</option>
+    </select>
+    <input type="number" step="any" class="node-amount" value="${amount ?? 0}">
+    <button class="icon-remove">×</button>`;
+  if (type) row.querySelector('.node-type').value = type;
+  row.querySelector('.icon-remove').onclick = ()=>{ row.remove(); tbRefreshArcSelects(); };
+  row.querySelector('.node-name').addEventListener('input', tbRefreshArcSelects);
+  document.getElementById('tb-nodes').appendChild(row);
+  tbRefreshArcSelects();
+}
+
+function tbGetNodeNames(){
+  return Array.from(document.querySelectorAll('.tb-node .node-name')).map(i=>i.value || '(sin nombre)');
+}
+
+function tbRefreshArcSelects(){
+  const names = tbGetNodeNames();
+  document.querySelectorAll('.arc-origen, .arc-destino').forEach(sel=>{
+    const cur = sel.value;
+    sel.innerHTML = names.map(n=>`<option value="${n}">${n}</option>`).join('');
+    if (names.includes(cur)) sel.value = cur;
+  });
+}
+
+function tbAddArc(origen, destino, costo, cap){
+  tbArcCount++;
+  const id = tbArcCount;
+  const names = tbGetNodeNames();
+  const row = document.createElement('div');
+  row.className = 'arc-grid tb-arc';
+  row.dataset.id = id;
+  row.innerHTML = `
+    <select class="arc-origen node-select">${names.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+    <select class="arc-destino node-select">${names.map(n=>`<option value="${n}">${n}</option>`).join('')}</select>
+    <input type="number" step="any" class="arc-costo" value="${costo ?? 1}" style="width:100%;">
+    <input type="number" step="any" class="arc-cap" placeholder="sin límite" value="${cap ?? ''}" style="width:100%;">
+    <button class="icon-remove">×</button>`;
+  if (origen) row.querySelector('.arc-origen').value = origen;
+  if (destino) row.querySelector('.arc-destino').value = destino;
+  row.querySelector('.icon-remove').onclick = ()=> row.remove();
+  document.getElementById('tb-arcs').appendChild(row);
+}
+
+function tbInit(){
+  document.getElementById('tb-nodes').innerHTML='';
+  document.getElementById('tb-arcs').innerHTML='';
+  tbNodeCount=0; tbArcCount=0;
+  tbAddNode('Fábrica A','oferta',15);
+  tbAddNode('Fábrica B','oferta',25);
+  tbAddNode('Centro X','transbordo',0);
+  tbAddNode('Tienda 1','demanda',10);
+  tbAddNode('Tienda 2','demanda',30);
+  tbAddArc('Fábrica A','Centro X',2);
+  tbAddArc('Fábrica B','Centro X',3);
+  tbAddArc('Centro X','Tienda 1',4);
+  tbAddArc('Centro X','Tienda 2',5);
+}
+
+function tbSolve(){
+  const nodeRows = Array.from(document.querySelectorAll('.tb-node'));
+  const nodes = nodeRows.map(r=>({
+    name: r.querySelector('.node-name').value,
+    type: r.querySelector('.node-type').value,
+    amount: parseFloat(r.querySelector('.node-amount').value)||0
+  }));
+  const arcRows = Array.from(document.querySelectorAll('.tb-arc'));
+  const arcs = arcRows.map(r=>({
+    from: r.querySelector('.arc-origen').value,
+    to: r.querySelector('.arc-destino').value,
+    cost: parseFloat(r.querySelector('.arc-costo').value)||0,
+    cap: r.querySelector('.arc-cap').value === '' ? null : parseFloat(r.querySelector('.arc-cap').value)
+  }));
+
+  const box = document.getElementById('tb-result');
+  const totalSupply = nodes.filter(n=>n.type==='oferta').reduce((a,b)=>a+b.amount,0);
+  const totalDemand = nodes.filter(n=>n.type==='demanda').reduce((a,b)=>a+b.amount,0);
+  if (Math.abs(totalSupply-totalDemand) > 1e-6){
+    box.innerHTML = `<div class="status-line status-bad">La oferta total (${fmt(totalSupply)}) debe ser igual a la demanda total (${fmt(totalDemand)}) para resolver la red.</div>`;
+    return;
+  }
+
+  const nArcs = arcs.length;
+  const objCoeffs = arcs.map(a=>a.cost);
+  const constraints = [];
+
+  nodes.forEach(node=>{
+    const row = new Array(nArcs).fill(0);
+    arcs.forEach((a,k)=>{
+      if (a.from===node.name) row[k]+=1;
+      if (a.to===node.name) row[k]-=1;
+    });
+    let net = 0;
+    if (node.type==='oferta') net = node.amount;
+    else if (node.type==='demanda') net = -node.amount;
+    else net = 0;
+    constraints.push({coeffs:row, rel:'=', rhs:net});
+  });
+
+  arcs.forEach((a,k)=>{
+    if (a.cap !== null){
+      const row = new Array(nArcs).fill(0);
+      row[k]=1;
+      constraints.push({coeffs:row, rel:'<=', rhs:a.cap});
+    }
+  });
+
+  const res = solveLP(objCoeffs, constraints, 'min');
+  if (res.status!=='optimal'){
+    box.innerHTML = `<div class="status-line status-bad">No se encontró una solución factible con esta red (revisa capacidades y balance de nodos).</div>`;
+    return;
+  }
+  let html = `<div class="status-line status-optimal">Costo total mínimo de la red = ${fmt(res.z)}</div>`;
+  html += '<table class="result-table"><thead><tr><th>Arco</th><th>Flujo</th><th>Costo unit.</th></tr></thead><tbody>';
+  arcs.forEach((a,k)=>{
+    html += `<tr><td>${a.from} → ${a.to}</td><td>${fmt(res.x[k])}</td><td>${fmt(a.cost)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+/* ============================================================
+   TAB 4: PROGRAMACIÓN POR OBJETIVOS
+   ============================================================ */
+let gpN = 2;
+let gpHardCount = 0;
+let gpGoalCount = 0;
+
+function gpCoefsWrapper(){
+  const wrap = document.createElement('div');
+  wrap.className='coefs';
+  for (let i=0;i<gpN;i++) wrap.appendChild(coefCell(i,0));
+  return wrap;
+}
+
+function gpAddVar(){
+  if (gpN>=10) return;
+  gpN++;
+  document.querySelectorAll('#gp-hard .coefs, #gp-goals .coefs').forEach(c=>{
+    c.appendChild(coefCell(gpN-1,0));
+  });
+}
+function gpRemoveVar(){
+  if (gpN<=1) return;
+  gpN--;
+  document.querySelectorAll('#gp-hard .coefs, #gp-goals .coefs').forEach(c=>{
+    c.removeChild(c.lastElementChild);
+  });
+}
+
+function gpAddHard(prefill, rel, rhs){
+  gpHardCount++;
+  const idx = gpHardCount;
+  const row = document.createElement('div');
+  row.className='row gp-hard-row';
+  const label = document.createElement('div'); label.className='rowlabel'; label.textContent='H'+idx;
+  const coefs = document.createElement('div'); coefs.className='coefs';
+  for (let i=0;i<gpN;i++) coefs.appendChild(coefCell(i, prefill?prefill[i]:0));
+  const relSel = document.createElement('select'); relSel.className='rel-select';
+  relSel.innerHTML='<option value="<=">&le;</option><option value=">=">&ge;</option><option value="=">=</option>';
+  if (rel) relSel.value=rel;
+  const rhsInp = document.createElement('input'); rhsInp.type='number'; rhsInp.step='any'; rhsInp.className='rhs'; rhsInp.value=rhs??0;
+  const rm = document.createElement('button'); rm.className='icon-remove'; rm.textContent='×'; rm.onclick=()=>row.remove();
+  row.append(label,coefs,relSel,rhsInp,rm);
+  document.getElementById('gp-hard').appendChild(row);
+}
+
+function gpAddGoal(prefill, rel, target, weight, label){
+  gpGoalCount++;
+  const idx = gpGoalCount;
+  const row = document.createElement('div');
+  row.className='row gp-goal-row';
+  const lab = document.createElement('div'); lab.className='rowlabel'; lab.textContent='G'+idx;
+  const coefs = document.createElement('div'); coefs.className='coefs';
+  for (let i=0;i<gpN;i++) coefs.appendChild(coefCell(i, prefill?prefill[i]:0));
+  const relSel = document.createElement('select'); relSel.className='rel-select goal-rel';
+  relSel.innerHTML='<option value="<=">&le; (no exceder)</option><option value=">=">&ge; (no quedar corto)</option><option value="=">= (exacto)</option>';
+  if (rel) relSel.value=rel;
+  const targetInp = document.createElement('input'); targetInp.type='number'; targetInp.step='any'; targetInp.className='goal-target'; targetInp.value=target??0; targetInp.title='meta';
+  const weightInp = document.createElement('input'); weightInp.type='number'; weightInp.step='any'; weightInp.className='goal-weight'; weightInp.value=weight??1; weightInp.title='peso'; weightInp.style.width='56px';
+  const nameInp = document.createElement('input'); nameInp.type='text'; nameInp.className='goal-name'; nameInp.value= label ?? ('Meta '+idx); nameInp.style.width='90px';
+  const rm = document.createElement('button'); rm.className='icon-remove'; rm.textContent='×'; rm.onclick=()=>row.remove();
+  const extra = document.createElement('div'); extra.className='goal-extra';
+  extra.append(relSel, targetInp, weightInp, nameInp, rm);
+  row.append(lab, coefs, extra);
+  document.getElementById('gp-goals').appendChild(row);
+}
+
+function gpInit(){
+  document.getElementById('gp-hard').innerHTML='';
+  document.getElementById('gp-goals').innerHTML='';
+  gpHardCount=0; gpGoalCount=0;
+  gpAddGoal([1,1],'<=', 40, 2, 'Horas de trabajo');
+  gpAddGoal([5,8],'>=', 200, 3, 'Utilidad');
+}
+
+function gpSolve(){
+  const hardRows = document.querySelectorAll('#gp-hard .gp-hard-row');
+  const goalRows = document.querySelectorAll('#gp-goals .gp-goal-row');
+  const nGoals = goalRows.length;
+  const totalVars = gpN + 2*nGoals; // x_1..x_n, dPlus_1..k, dMinus_1..k
+
+  const objCoeffs = new Array(totalVars).fill(0);
+  const constraints = [];
+
+  hardRows.forEach(row=>{
+    const coeffs = Array.from(row.querySelectorAll('.coefs .coef')).map(i=>parseFloat(i.value)||0);
+    const rel = row.querySelector('.rel-select').value;
+    const rhs = parseFloat(row.querySelector('.rhs').value)||0;
+    const full = coeffs.concat(new Array(2*nGoals).fill(0));
+    constraints.push({coeffs:full, rel, rhs});
+  });
+
+  const goalInfo = [];
+  goalRows.forEach((row,k)=>{
+    const coeffs = Array.from(row.querySelectorAll('.coefs .coef')).map(i=>parseFloat(i.value)||0);
+    const rel = row.querySelector('.goal-rel').value;
+    const target = parseFloat(row.querySelector('.goal-target').value)||0;
+    const weight = parseFloat(row.querySelector('.goal-weight').value)||0;
+    const name = row.querySelector('.goal-name').value;
+    const full = coeffs.concat(new Array(2*nGoals).fill(0));
+    const dPlusCol = gpN + 2*k;
+    const dMinusCol = gpN + 2*k + 1;
+    full[dMinusCol] = 1;
+    full[dPlusCol] = -1;
+    constraints.push({coeffs: full, rel:'=', rhs: target});
+    if (rel==='<='){ objCoeffs[dPlusCol]=weight; }
+    else if (rel==='>='){ objCoeffs[dMinusCol]=weight; }
+    else { objCoeffs[dPlusCol]=weight; objCoeffs[dMinusCol]=weight; }
+    goalInfo.push({name, coeffs, rel, target, weight, dPlusCol, dMinusCol});
+  });
+
+  const res = solveLP(objCoeffs, constraints, 'min');
+  const box = document.getElementById('gp-result');
+  if (res.status!=='optimal'){
+    box.innerHTML = `<div class="status-line status-bad">No se encontró una solución factible.</div>`;
+    return;
+  }
+  let html = `<div class="status-line status-optimal">Suma ponderada de desviaciones = ${fmt(res.z)}</div>`;
+  html += '<table class="result-table"><thead><tr><th>Variable</th><th>Valor</th></tr></thead><tbody>';
+  for (let i=0;i<gpN;i++) html += `<tr><td>x${i+1}</td><td>${fmt(res.x[i])}</td></tr>`;
+  html += '</tbody></table>';
+
+  html += '<div class="section-title">Cumplimiento de metas</div>';
+  html += '<table class="result-table"><thead><tr><th>Meta</th><th>Alcanzado</th><th>Meta buscada</th><th>Desv. +</th><th>Desv. −</th><th>Estado</th></tr></thead><tbody>';
+  goalInfo.forEach(g=>{
+    const achieved = g.coeffs.reduce((s,c,i)=> s + c*res.x[i], 0);
+    const dPlus = res.x[g.dPlusCol];
+    const dMinus = res.x[g.dMinusCol];
+    const met = (dPlus < 1e-6 && dMinus < 1e-6);
+    html += `<tr><td>${g.name}</td><td>${fmt(achieved)}</td><td>${fmt(g.target)}</td><td>${fmt(dPlus)}</td><td>${fmt(dMinus)}</td><td>${met?'cumplida':'con desviación'}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+/* ============================================================
+   TAB 5: VAN / TIR / IR
+   ============================================================ */
+let finFlowCount = 0;
+function finAddFlow(value){
+  finFlowCount++;
+  const id = finFlowCount;
+  const wrap = document.createElement('div');
+  wrap.className='coef-cell fin-flow-cell';
+  wrap.dataset.id = id;
+  wrap.style.display='inline-flex';
+  wrap.style.marginRight='8px';
+  wrap.innerHTML = `<span>periodo ${id}</span><input type="number" step="any" class="fin-flow" value="${value ?? 3000}">`;
+  document.getElementById('fin-flows').appendChild(wrap);
+}
+function finRemoveFlow(){
+  const wrap = document.getElementById('fin-flows');
+  if (wrap.children.length<=1) return;
+  wrap.removeChild(wrap.lastElementChild);
+  finFlowCount--;
+}
+function finInit(){
+  document.getElementById('fin-flows').innerHTML='';
+  finFlowCount=0;
+  [3000,4000,4000,5000].forEach(v=>finAddFlow(v));
+}
+
+function npv(rate, i0, flows){
+  let v = -i0;
+  flows.forEach((cf,idx)=>{ v += cf / Math.pow(1+rate, idx+1); });
+  return v;
+}
+
+function findIRR(i0, flows){
+  // busca cambio de signo de VAN(r) en un rango amplio y usa bisección
+  let lo = -0.99, hi = 10; // -99% a 1000%
+  let fLo = npv(lo, i0, flows);
+  let fHi = npv(hi, i0, flows);
+  if (fLo*fHi > 0){
+    // intenta escanear en pasos para hallar cambio de signo
+    let found=false;
+    let step=0.05, r=lo;
+    let prev = npv(r,i0,flows);
+    while (r < hi){
+      r+=step;
+      const cur = npv(r,i0,flows);
+      if (prev*cur <= 0){ lo=r-step; hi=r; found=true; break; }
+      prev=cur;
+    }
+    if (!found) return null;
+  }
+  for (let it=0; it<200; it++){
+    const mid = (lo+hi)/2;
+    const fMid = npv(mid, i0, flows);
+    if (Math.abs(fMid) < 1e-7) return mid;
+    if (npv(lo,i0,flows)*fMid <= 0) hi = mid; else lo = mid;
+  }
+  return (lo+hi)/2;
+}
+
+function finSolve(){
+  const rate = (parseFloat(document.getElementById('fin-rate').value)||0)/100;
+  const i0 = parseFloat(document.getElementById('fin-i0').value)||0;
+  const flows = Array.from(document.querySelectorAll('.fin-flow')).map(i=>parseFloat(i.value)||0);
+
+  const van = npv(rate, i0, flows);
+  const ir = i0 !== 0 ? (van + i0) / i0 : NaN;
+  const tir = findIRR(i0, flows);
+
+  const box = document.getElementById('fin-result');
+  let vanClass = van >= 0 ? 'status-optimal' : 'status-bad';
+  let html = `<div class="status-line ${vanClass}">VAN = ${fmt(van)} — ${van>=0 ? 'proyecto rentable a la tasa dada' : 'proyecto no rentable a la tasa dada'}</div>`;
+  html += '<table class="result-table"><tbody>';
+  html += `<tr><td>VAN (Valor Actual Neto)</td><td>${fmt(van)}</td></tr>`;
+  html += `<tr><td>TIR (Tasa Interna de Retorno)</td><td>${tir===null ? 'no se encontró raíz en el rango evaluado' : (fmt(tir*100)+' %')}</td></tr>`;
+  html += `<tr><td>IR (Índice de Rentabilidad)</td><td>${fmt(ir)}</td></tr>`;
+  html += '</tbody></table>';
+  html += `<p class="hint">Criterios: VAN &gt; 0 → aceptar. TIR &gt; tasa de descuento (${fmt(rate*100)}%) → aceptar. IR &gt; 1 → aceptar.</p>`;
+  box.innerHTML = html;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+lpInit();
+tpRenderTable();
+tbInit();
+gpInit();
+finInit();
+</script>
+</body>
+</html>
